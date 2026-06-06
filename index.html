@@ -449,6 +449,34 @@ footer {
 ::-webkit-scrollbar-thumb:hover { background: var(--border); }
 
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Emoji toggle */
+.emoji-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  height: 36px;
+  border-radius: var(--r);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-m);
+  transition: all .15s;
+  white-space: nowrap;
+  outline: none;
+  user-select: none;
+}
+.emoji-toggle:hover { background: var(--surface3); color: var(--text); }
+.emoji-toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-lo);
+}
+.emoji-toggle-ico { font-size: 15px; line-height: 1; }
 </style>
 </head>
 <body>
@@ -478,6 +506,9 @@ footer {
       </select>
       <span class="sel-arrow">▾</span>
     </div>
+    <button class="emoji-toggle active" id="emojiToggle" onclick="toggleEmoji()" title="Toggle emoji in output">
+      <span class="emoji-toggle-ico">😀</span><span id="emojiLabel">Emoji</span>
+    </button>
     <button class="btn btn-ghost" onclick="clearAll()" title="Clear (Ctrl+K)">Clear</button>
     <button class="btn btn-primary" id="copyBtn" onclick="doCopy()" title="Copy (Ctrl+Enter)">
       <span id="copyLabel">Copy</span>
@@ -552,6 +583,21 @@ const APPS = {
 /* ── State ───────────────────────────────────────── */
 let curApp = 'word';
 let curOut = { type:'', html:'', text:'' };
+let showEmoji = true;
+
+/* ── Emoji stripping ─────────────────────────────── */
+function stripEmoji(s) {
+  return s.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/  +/g, ' ');
+}
+
+function toggleEmoji() {
+  showEmoji = !showEmoji;
+  const btn = document.getElementById('emojiToggle');
+  const lbl = document.getElementById('emojiLabel');
+  btn.classList.toggle('active', showEmoji);
+  lbl.textContent = showEmoji ? 'Emoji' : 'Emoji';
+  update();
+}
 
 /* ── ANSI stripping ──────────────────────────────── */
 function stripAnsi(s) {
@@ -755,6 +801,7 @@ function update() {
   if (!raw.trim()) { showEmpty(); return; }
 
   let text = stripAnsi(raw);
+  if (!showEmoji) text = stripEmoji(text);
   text = convertBoxTables(text);
 
   const outHtml = document.getElementById('outHtml');
@@ -911,5 +958,3 @@ if (typeof marked !== 'undefined') {
 onAppChange();
 document.getElementById('input').focus();
 </script>
-</body>
-</html>
