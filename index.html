@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decant — Format AI & Terminal Output</title>
+<meta name="description" content="Paste AI or terminal output, get perfectly formatted text for Word, Notion, Slack, Google Docs, and more.">
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #09090f;
+  --surface:   #111119;
+  --surface2:  #17172280;
+  --surface3:  #1e1e2e;
+  --border:    #27273a;
+  --border-s:  #1c1c2a;
+  --text:      #dde1f0;
+  --text-m:    #5a5a7a;
+  --text-d:    #333350;
+  --accent:    #7c6eff;
+  --accent-lo: rgba(124,110,255,.18);
+  --green:     #34d88f;
+  --green-lo:  rgba(52,216,143,.15);
+  --r:         10px;
+  --r-sm:      6px;
+  --font:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:      'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────── */
+header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 54px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  gap: 12px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #6a57ef 0%, #9d7bf8 55%, #38bdf8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 0 24px rgba(124,110,255,.35);
+}
+.logo-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,.12));
+}
+
+.logo-name {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.4px;
+  color: #fff;
+}
+
+.logo-tag {
+  font-size: 12px;
+  color: var(--text-m);
+  padding-left: 10px;
+  margin-left: 2px;
+  border-left: 1px solid var(--border);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+/* App selector */
+.app-sel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 0 10px 0 12px;
+  height: 36px;
+  transition: border-color .15s;
+  cursor: pointer;
+}
+.app-sel:focus-within { border-color: var(--accent); }
+
+.app-sel-label {
+  font-size: 12px;
+  color: var(--text-m);
+  white-space: nowrap;
+}
+
+.app-icon { font-size: 15px; line-height: 1; }
+
+.app-sel select {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0 2px 0 0;
+  min-width: 120px;
+}
+.app-sel select option { background: #17172e; color: var(--text); }
+
+.sel-arrow { color: var(--text-m); font-size: 9px; pointer-events: none; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 15px;
+  height: 36px;
+  border-radius: var(--r);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  white-space: nowrap;
+  outline: none;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-m);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 20px var(--accent-lo);
+  min-width: 90px;
+  justify-content: center;
+}
+.btn-primary:hover { background: #6957e8; box-shadow: 0 0 28px rgba(124,110,255,.3); }
+
+.btn-success {
+  background: var(--green);
+  color: #052514;
+  box-shadow: 0 0 18px var(--green-lo);
+}
+
+/* ── Main panels ─────────────────────────────────── */
+main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.panel-in { border-right: 1px solid var(--border); }
+
+.ph {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border-s);
+  background: var(--surface);
+}
+
+.ph-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--text-m);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-in  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.dot-out { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+
+.ph-hint { font-size: 11px; color: var(--text-d); }
+
+/* Input */
+.in-body { flex: 1; position: relative; overflow: hidden; }
+
+#input {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  background: var(--bg);
+  border: none; outline: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.78;
+  padding: 18px 20px;
+  resize: none;
+  overflow-y: auto;
+  caret-color: var(--accent);
+}
+#input::placeholder { color: var(--text-d); font-family: var(--font); font-style: italic; }
+
+/* Output body */
+.out-body {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  background: var(--bg);
+}
+
+/* Rendered HTML preview */
+.prose {
+  padding: 20px 24px;
+  min-height: 100%;
+  color: var(--text);
+}
+
+.prose h1 {
+  font-size: 1.7em; font-weight: 700; letter-spacing: -.5px;
+  margin: 0 0 .7em; color: #fff; line-height: 1.2;
+}
+.prose h2 {
+  font-size: 1.3em; font-weight: 700; margin: 1.3em 0 .45em;
+  color: #f0f0ff; line-height: 1.3;
+  padding-bottom: .3em; border-bottom: 1px solid var(--border);
+}
+.prose h3 {
+  font-size: 1.08em; font-weight: 600; margin: 1.1em 0 .4em; color: #e0e0ff;
+}
+.prose h4, .prose h5, .prose h6 {
+  font-size: 1em; font-weight: 600; margin: .9em 0 .3em;
+}
+.prose p { margin: .65em 0; line-height: 1.78; }
+.prose strong { font-weight: 700; color: #fff; }
+.prose em { font-style: italic; color: #c8c8f0; }
+.prose del { text-decoration: line-through; color: var(--text-m); }
+.prose a { color: var(--accent); text-decoration: none; }
+.prose a:hover { text-decoration: underline; }
+
+.prose code {
+  font-family: var(--mono); font-size: .865em;
+  background: #1e1e34; padding: .12em .45em; border-radius: 4px; color: #b4a0ff;
+}
+.prose pre {
+  background: var(--surface3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 15px 18px; overflow-x: auto; margin: .8em 0;
+}
+.prose pre code { background: none; padding: 0; color: #dde1f0; font-size: .865em; }
+
+.prose ul, .prose ol { margin: .55em 0; padding-left: 1.8em; }
+.prose li { margin: .28em 0; line-height: 1.68; }
+.prose li > p { margin: .2em 0; }
+
+.prose li input[type="checkbox"] {
+  margin-right: 6px; accent-color: var(--accent);
+  width: 13px; height: 13px;
+}
+
+.prose table {
+  width: 100%; border-collapse: collapse; margin: .8em 0;
+  font-size: .9em; border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden;
+}
+.prose thead { background: #1e1e30; }
+.prose th {
+  padding: 9px 14px; text-align: left; font-weight: 600;
+  font-size: .82em; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--accent); border-bottom: 1px solid var(--border);
+}
+.prose td {
+  padding: 7px 14px; border-bottom: 1px solid var(--border-s); vertical-align: top;
+}
+.prose tr:last-child td { border-bottom: none; }
+.prose tr:hover td { background: rgba(124,110,255,.04); }
+.prose tr:nth-child(even) td { background: rgba(255,255,255,.018); }
+
+.prose blockquote {
+  border-left: 3px solid var(--accent);
+  margin: .8em 0; padding: .45em 1em;
+  color: #8888aa; font-style: italic;
+  background: rgba(124,110,255,.05); border-radius: 0 5px 5px 0;
+}
+.prose hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+
+/* Plain text output */
+#out-text {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  background: var(--bg);
+  border: none; outline: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.78;
+  padding: 18px 20px;
+  resize: none;
+  overflow-y: auto;
+}
+
+#out-text.slack-mode {
+  background: #1a1523;
+  color: #d1d2d3;
+  border-left: 3px solid #4a154b;
+}
+
+/* Empty state */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+  color: var(--text-m);
+  gap: 10px;
+  pointer-events: none;
+}
+.empty-ico { font-size: 38px; opacity: .35; }
+.empty-h { font-size: 15px; font-weight: 600; color: var(--text-d); margin-top: 4px; }
+.empty-p { font-size: 12.5px; color: var(--text-d); max-width: 230px; line-height: 1.55; }
+
+/* ── Footer / status bar ─────────────────────────── */
+footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  height: 28px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11px;
+  gap: 0;
+  overflow: hidden;
+}
+.si {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 12px;
+  margin-right: 12px;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+.si:last-child { border-right: none; margin-left: auto; padding-right: 0; }
+.si-label { color: var(--text-d); }
+.si-val { color: var(--text-m); font-weight: 500; }
+.status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+
+/* ── Toast ───────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Drag highlight ──────────────────────────────── */
+.drag-over {
+  outline: 2px dashed var(--accent) !important;
+  outline-offset: -6px;
+  background: rgba(124,110,255,.04) !important;
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 700px) {
+  main { flex-direction: column; }
+  .panel-in { border-right: none; border-bottom: 1px solid var(--border); max-height: 45vh; }
+  .logo-tag { display: none; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">🧪</div>
+    <span class="logo-name">Decant</span>
+    <span class="logo-tag">Pour AI output into any app</span>
+  </div>
+  <div class="header-right">
+    <div class="app-sel">
+      <span class="app-sel-label">Pour into</span>
+      <span class="app-icon" id="appIcon">📝</span>
+      <select id="appSel" onchange="onAppChange()">
+        <option value="word">Microsoft Word</option>
+        <option value="googledocs">Google Docs</option>
+        <option value="pages">Apple Pages</option>
+        <option value="notes">Apple Notes</option>
+        <option value="notion">Notion</option>
+        <option value="slack">Slack</option>
+        <option value="email">Email</option>
+        <option value="linear">Linear</option>
+        <option value="confluence">Confluence</option>
+        <option value="markdown">Markdown (clean)</option>
+        <option value="plaintext">Plain Text</option>
+      </select>
+      <span class="sel-arrow">▾</span>
+    </div>
+    <button class="btn btn-ghost" onclick="clearAll()" title="Clear (Ctrl+K)">Clear</button>
+    <button class="btn btn-primary" id="copyBtn" onclick="doCopy()" title="Copy (Ctrl+Enter)">
+      <span id="copyLabel">Copy</span>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="panel panel-in">
+    <div class="ph">
+      <div class="ph-label"><div class="dot dot-in"></div>Input</div>
+      <div class="ph-hint" id="inHint">Paste AI or terminal output</div>
+    </div>
+    <div class="in-body">
+      <textarea id="input"
+        placeholder="Paste AI output, terminal text, or markdown here…&#10;&#10;Handles: markdown tables · bullet lists · code blocks · bold/italic · headers · checkboxes · ANSI colour codes · box-drawing tables"
+        oninput="onInput()"
+        onpaste="onPaste()"
+        spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"></textarea>
+    </div>
+  </div>
+
+  <div class="panel panel-out">
+    <div class="ph">
+      <div class="ph-label"><div class="dot dot-out"></div>Output</div>
+      <div class="ph-hint" id="outHint">Ready</div>
+    </div>
+    <div class="out-body" id="outBody">
+      <div class="prose" id="outHtml">
+        <div class="empty" id="emptyState">
+          <div class="empty-ico">🧪</div>
+          <div class="empty-h">Nothing here yet</div>
+          <div class="empty-p">Paste something on the left — it'll appear here formatted for your chosen app.</div>
+        </div>
+      </div>
+      <textarea id="out-text" readonly style="display:none"></textarea>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="si"><div class="status-dot"></div><span class="si-label">Words</span><span class="si-val" id="stWords">0</span></div>
+  <div class="si"><span class="si-label">Chars</span><span class="si-val" id="stChars">0</span></div>
+  <div class="si"><span class="si-label">Detected</span><span class="si-val" id="stFmt">—</span></div>
+  <div class="si"><span style="color:var(--text-d)">⌃K clear &nbsp;·&nbsp; ⌃↵ copy</span></div>
+</footer>
+
+<div class="toast" id="toast">
+  <span id="toastIco">✓</span>
+  <span id="toastMsg">Copied to clipboard</span>
+</div>
+
+<script>
+/* ── App configs ─────────────────────────────────── */
+const APPS = {
+  word:       { name:'Microsoft Word',   icon:'📝', fmt:'html',     hint:'Tables, lists, headers — paste straight into Word' },
+  googledocs: { name:'Google Docs',      icon:'📄', fmt:'html',     hint:'Formatted for Google Docs' },
+  pages:      { name:'Apple Pages',      icon:'📃', fmt:'html',     hint:'Formatted for Apple Pages' },
+  notes:      { name:'Apple Notes',      icon:'🗒️', fmt:'html',     hint:'Formatted for Apple Notes' },
+  notion:     { name:'Notion',           icon:'◾',  fmt:'html',     hint:'Paste with ⌘V — Notion reads the HTML structure' },
+  slack:      { name:'Slack',            icon:'💬', fmt:'slack',    hint:'Slack mrkdwn: *bold* _italic_ `code` ~strike~' },
+  email:      { name:'Email',            icon:'📧', fmt:'html',     hint:'Formatted for Gmail, Outlook, Apple Mail' },
+  linear:     { name:'Linear',           icon:'🔷', fmt:'markdown', hint:'Clean markdown for Linear issues & docs' },
+  confluence: { name:'Confluence',       icon:'🌊', fmt:'html',     hint:'Formatted for Atlassian Confluence' },
+  markdown:   { name:'Markdown (clean)', icon:'⬇️', fmt:'markdown', hint:'Normalised, clean markdown output' },
+  plaintext:  { name:'Plain Text',       icon:'📋', fmt:'plain',    hint:'All formatting stripped — clean plain text' },
+};
+
+/* ── State ───────────────────────────────────────── */
+let curApp = 'word';
+let curOut = { type:'', html:'', text:'' };
+
+/* ── ANSI stripping ──────────────────────────────── */
+function stripAnsi(s) {
+  return s
+    .replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
+    .replace(/\x1B\][^\x07]*\x07/g, '')
+    .replace(/\x1B[PX^_][^\x1B]*\x1B\\/g, '')
+    .replace(/\x1B[@-Z\\-_]/g, '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+}
+
+/* ── Detect format ───────────────────────────────── */
+function detectFmt(raw) {
+  const flags = [];
+  if (/\x1B\[/.test(raw)) flags.push('ANSI codes');
+  const s = stripAnsi(raw);
+  if (/^#{1,6} /m.test(s))        flags.push('headers');
+  if (/^\|.+\|$/m.test(s))        flags.push('tables');
+  if (/^```/m.test(s))            flags.push('code blocks');
+  if (/\*\*|__/.test(s))          flags.push('bold');
+  if (/^[-*+] /m.test(s))         flags.push('lists');
+  if (/^\d+\. /m.test(s))         flags.push('numbered lists');
+  if (/- \[[ x]\]/i.test(s))      flags.push('checkboxes');
+  if (/^> /m.test(s))             flags.push('blockquotes');
+  if (/[│┌└├┤┬┴┼┐┘─═║╔╚╠╣╦╩╬╗]/.test(s)) flags.push('box-drawing');
+  if (!flags.length) return 'Plain text';
+  if (flags[0] === 'ANSI codes') return `Terminal output${flags.length > 1 ? ' — ' + flags.slice(1).join(', ') : ''}`;
+  return 'Markdown — ' + flags.join(', ');
+}
+
+/* ── Box-drawing → markdown tables ──────────────── */
+function convertBoxTables(text) {
+  const lines = text.split('\n');
+  const out   = [];
+  let tblBuf  = [];
+  let inTbl   = false;
+
+  function flush() {
+    if (!tblBuf.length) return;
+    const dataRows = tblBuf
+      .filter(l => !(/^[\s┌─┬┐└┴┘├┼┤╔═╦╗╚╩╝╠╬╣+\-|╠]*$/.test(
+        l.replace(/[^┌─┬┐└┴┘├┼┤╔═╦╗╚╩╝╠╬╣║│+\-| ]/g, '')
+      )))
+      .map(l => {
+        const sep = l.includes('│') ? '│' : '|';
+        return l.split(sep).filter((_, i, a) => i > 0 && i < a.length - 1).map(c => c.trim());
+      })
+      .filter(r => r.length > 0);
+
+    if (dataRows.length === 0) {
+      tblBuf.forEach(l => out.push(l));
+    } else {
+      dataRows.forEach((row, ri) => {
+        out.push('| ' + row.join(' | ') + ' |');
+        if (ri === 0) out.push('| ' + row.map(() => '---').join(' | ') + ' |');
+      });
+      out.push('');
+    }
+    tblBuf = [];
+  }
+
+  for (const line of lines) {
+    const t = line.trim();
+    const hasBorder = /[┌─┬┐└┴┘├┼┤│╔═╦╗╚╩╝╠╬╣║]/.test(t);
+    const hasAscii  = /^\+[-+]+\+$/.test(t) || (/^\|/.test(t) && /\|$/.test(t) && t.split('|').length > 2);
+
+    if (hasBorder || (inTbl && hasAscii)) {
+      inTbl = true;
+      tblBuf.push(line);
+    } else {
+      if (inTbl) { flush(); inTbl = false; }
+      out.push(line);
+    }
+  }
+  if (inTbl) flush();
+  return out.join('\n');
+}
+
+/* ── Markdown → Slack mrkdwn ─────────────────────── */
+function toSlack(text) {
+  const blocks = []; const inlines = [];
+  text = text.replace(/```[\s\S]*?```/g,  m => { blocks.push(m);  return `\x00B${blocks.length-1}\x00`; });
+  text = text.replace(/`[^`\n]+`/g,       m => { inlines.push(m); return `\x00I${inlines.length-1}\x00`; });
+
+  text = text.replace(/^#{1,6} (.+)$/gm, '*$1*');
+  text = text.replace(/\*\*(.+?)\*\*/gs, '*$1*');
+  text = text.replace(/__(.+?)__/gs,     '*$1*');
+  text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/gs, '_$1_');
+  text = text.replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/gs, '_$1_');
+  text = text.replace(/~~(.+?)~~/gs, '~$1~');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<$2|$1>');
+
+  // Tables → plain rows
+  text = text.replace(/((?:^\|.+\|$\n?)+)/gm, match =>
+    match.split('\n')
+      .filter(l => l.trim() && !l.match(/^\|[\s\-:|]+\|$/))
+      .map(l => l.split('|').filter((_, i, a) => i > 0 && i < a.length-1).map(c => c.trim()).join('  '))
+      .join('\n') + '\n'
+  );
+
+  text = text.replace(/\x00B(\d+)\x00/g,  (_, i) => blocks[i]);
+  text = text.replace(/\x00I(\d+)\x00/g,  (_, i) => inlines[i]);
+  return text.trim();
+}
+
+/* ── Markdown → Plain text ───────────────────────── */
+function toPlain(text) {
+  text = text.replace(/```[^\n]*\n([\s\S]*?)```/g, (_, c) => c.trim());
+  text = text.replace(/`([^`]+)`/g, '$1');
+  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  text = text.replace(/\*\*\*(.+?)\*\*\*/gs, '$1');
+  text = text.replace(/___(.+?)___/gs,        '$1');
+  text = text.replace(/\*\*(.+?)\*\*/gs,      '$1');
+  text = text.replace(/__(.+?)__/gs,          '$1');
+  text = text.replace(/\*(.+?)\*/gs,          '$1');
+  text = text.replace(/_(.+?)_/gs,            '$1');
+  text = text.replace(/~~(.+?)~~/gs,          '$1');
+  text = text.replace(/^#{1,6} /gm, '');
+  text = text.replace(/^> ?/gm, '');
+  text = text.replace(/^[-*_]{3,}\s*$/gm, '');
+  text = text.replace(/- \[x\]/gi, '☑');
+  text = text.replace(/- \[ \]/g,  '☐');
+
+  text = text.replace(/((?:^\|.+\|$\n?)+)/gm, match => {
+    const rows = match.trim().split('\n')
+      .filter(l => !l.match(/^\|[\s\-:|]+\|$/))
+      .map(l => l.split('|').filter((_, i, a) => i > 0 && i < a.length-1).map(c => c.trim()));
+    if (!rows.length) return '';
+    const widths = rows[0].map((_, ci) => Math.max(...rows.map(r => (r[ci]||'').length)));
+    return rows.map((row, ri) => {
+      const s = row.map((cell, ci) => (cell||'').padEnd(widths[ci])).join('  ');
+      return ri === 0 ? s + '\n' + widths.map(w => '─'.repeat(w)).join('  ') : s;
+    }).join('\n') + '\n';
+  });
+
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text.trim();
+}
+
+/* ── Normalize markdown ──────────────────────────── */
+function normMd(text) {
+  text = text.replace(/^(#{1,6})([^\s#\n])/gm, '$1 $2');
+  text = text.replace(/^[ \t]*[*+][ \t]+/gm, '- ');
+  text = text.replace(/__(.+?)__/gs, '**$1**');
+  text = text.replace(/([^\n])\n(#{1,6} )/g, '$1\n\n$2');
+  text = text.replace(/^(#{1,6} .+)\n([^#\n])/gm, '$1\n\n$2');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text.trim();
+}
+
+/* ── HTML for copy (inline-styled for Word) ──────── */
+function buildCopyHtml(md) {
+  const body = 'font-family:Calibri,Aptos,Arial,sans-serif;font-size:11pt;color:#111;line-height:1.65;margin:0;padding:0;';
+  let html = (typeof marked !== 'undefined')
+    ? marked.parse(md, { breaks: true, gfm: true })
+    : md.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+
+  const repl = (tag, style) => {
+    html = html.replace(new RegExp(`<${tag}(\\s[^>]*)?>`, 'g'), (m, a='') => `<${tag}${a} style="${style}">`);
+  };
+
+  repl('h1', 'font-family:Calibri,sans-serif;font-size:20pt;font-weight:bold;color:#1a3a6e;margin:12pt 0 5pt;line-height:1.2;');
+  repl('h2', 'font-family:Calibri,sans-serif;font-size:15pt;font-weight:bold;color:#2c4a70;margin:10pt 0 4pt;');
+  repl('h3', 'font-family:Calibri,sans-serif;font-size:13pt;font-weight:bold;color:#2c4a70;margin:8pt 0 3pt;');
+  repl('h4', 'font-family:Calibri,sans-serif;font-size:11pt;font-weight:bold;margin:6pt 0 2pt;');
+  repl('p',  'font-family:Calibri,sans-serif;font-size:11pt;margin:5pt 0;line-height:1.6;');
+  repl('ul', 'margin:5pt 0;padding-left:18pt;');
+  repl('ol', 'margin:5pt 0;padding-left:18pt;');
+  repl('li', 'font-family:Calibri,sans-serif;font-size:11pt;margin:2pt 0;');
+  repl('table', 'border-collapse:collapse;width:100%;margin:8pt 0;font-family:Calibri,sans-serif;font-size:11pt;');
+  repl('th', 'background:#2c4a70;color:#fff;padding:6pt 10pt;text-align:left;font-weight:bold;border:1pt solid #2c4a70;');
+  repl('td', 'padding:5pt 10pt;border:1pt solid #c8ccd8;');
+  repl('blockquote', 'border-left:4pt solid #7c6eff;padding:4pt 12pt;margin:6pt 0;color:#555;font-style:italic;');
+  repl('pre', 'background:#f5f5f8;padding:10pt;border-radius:4pt;border:1pt solid #ddd;margin:6pt 0;overflow:auto;');
+  html = html.replace(/<code>/g, '<code style="font-family:Consolas,\'Courier New\',monospace;font-size:10pt;background:#f0f0f5;padding:1px 4px;border-radius:3px;">');
+  html = html.replace(/(<pre[^>]*>)<code[^>]*>/g, '$1<code style="font-family:Consolas,\'Courier New\',monospace;font-size:10pt;background:none;">');
+
+  return `<html><head><meta charset="UTF-8"></head><body style="${body}">${html}</body></html>`;
+}
+
+/* ── Parse markdown for preview ──────────────────── */
+function parseForPreview(text) {
+  if (typeof marked === 'undefined') {
+    return '<pre style="white-space:pre-wrap">' + text.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre>';
+  }
+  return marked.parse(text, { breaks: true, gfm: true });
+}
+
+/* ── Update output ───────────────────────────────── */
+function update() {
+  const raw = document.getElementById('input').value;
+  const app = APPS[curApp];
+
+  const stripped = stripAnsi(raw);
+  const words = stripped.trim() ? stripped.trim().split(/\s+/).length : 0;
+  document.getElementById('stWords').textContent = words.toLocaleString();
+  document.getElementById('stChars').textContent = raw.length.toLocaleString();
+  document.getElementById('stFmt').textContent   = raw.trim() ? detectFmt(raw) : '—';
+
+  if (!raw.trim()) { showEmpty(); return; }
+
+  let text = stripAnsi(raw);
+  text = convertBoxTables(text);
+
+  const outHtml = document.getElementById('outHtml');
+  const outText = document.getElementById('out-text');
+
+  if (app.fmt === 'html') {
+    outHtml.innerHTML = parseForPreview(text);
+    outHtml.style.display = '';
+    outText.style.display  = 'none';
+    outText.classList.remove('slack-mode');
+    curOut = { type:'rich', html: buildCopyHtml(text), text: toPlain(text) };
+
+  } else if (app.fmt === 'slack') {
+    const sl = toSlack(text);
+    outText.value = sl;
+    outText.style.display  = '';
+    outText.classList.add('slack-mode');
+    outHtml.style.display  = 'none';
+    curOut = { type:'plain', text: sl };
+
+  } else if (app.fmt === 'markdown') {
+    const md = normMd(text);
+    outText.value = md;
+    outText.style.display  = '';
+    outText.classList.remove('slack-mode');
+    outHtml.style.display  = 'none';
+    curOut = { type:'plain', text: md };
+
+  } else {
+    const pl = toPlain(text);
+    outText.value = pl;
+    outText.style.display  = '';
+    outText.classList.remove('slack-mode');
+    outHtml.style.display  = 'none';
+    curOut = { type:'plain', text: pl };
+  }
+
+  document.getElementById('outHint').textContent = app.hint;
+}
+
+function showEmpty() {
+  const outHtml = document.getElementById('outHtml');
+  outHtml.innerHTML = `
+    <div class="empty">
+      <div class="empty-ico">🧪</div>
+      <div class="empty-h">Nothing here yet</div>
+      <div class="empty-p">Paste something on the left — it'll appear here formatted for your chosen app.</div>
+    </div>`;
+  outHtml.style.display = '';
+  document.getElementById('out-text').style.display = 'none';
+  document.getElementById('outHint').textContent = 'Ready';
+}
+
+/* ── Copy to clipboard ───────────────────────────── */
+async function doCopy() {
+  if (!curOut.text && !curOut.html) { showToast('Nothing to copy', '⚠️'); return; }
+
+  try {
+    if (curOut.type === 'rich' && curOut.html && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html':  new Blob([curOut.html],        { type:'text/html' }),
+          'text/plain': new Blob([curOut.text || ''],  { type:'text/plain' }),
+        })
+      ]);
+    } else {
+      await navigator.clipboard.writeText(curOut.text || '');
+    }
+    copySuccess();
+  } catch {
+    if (curOut.type === 'rich' && curOut.html) {
+      try {
+        const el = document.createElement('div');
+        el.contentEditable = 'true';
+        el.innerHTML = curOut.html;
+        el.style.cssText = 'position:fixed;opacity:0;pointer-events:none;top:0;left:0;width:1px;height:1px;overflow:hidden;';
+        document.body.appendChild(el);
+        el.focus();
+        document.execCommand('selectAll');
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        copySuccess();
+        return;
+      } catch { /* fall through */ }
+    }
+    try {
+      await navigator.clipboard.writeText(curOut.text || '');
+      showToast('Copied as plain text — browser limited rich copy', '📋');
+    } catch {
+      showToast('Copy failed — use Ctrl+A then Ctrl+C in the output area', '❌');
+    }
+  }
+}
+
+function copySuccess() {
+  const btn = document.getElementById('copyBtn');
+  const lbl = document.getElementById('copyLabel');
+  btn.classList.replace('btn-primary', 'btn-success');
+  lbl.textContent = 'Copied!';
+  showToast('Copied — paste into ' + APPS[curApp].name, '✓');
+  setTimeout(() => {
+    btn.classList.replace('btn-success', 'btn-primary');
+    lbl.textContent = 'Copy';
+  }, 2200);
+}
+
+/* ── Toast ───────────────────────────────────────── */
+let toastTimer;
+function showToast(msg, ico = '✓') {
+  clearTimeout(toastTimer);
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIco').textContent = ico;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+/* ── Event handlers ──────────────────────────────── */
+function onInput()     { update(); }
+function onPaste()     { setTimeout(update, 0); }
+function onAppChange() {
+  curApp = document.getElementById('appSel').value;
+  document.getElementById('appIcon').textContent = APPS[curApp].icon;
+  update();
+}
+function clearAll() {
+  document.getElementById('input').value = '';
+  update();
+  document.getElementById('input').focus();
+}
+
+/* ── Keyboard shortcuts ──────────────────────────── */
+document.addEventListener('keydown', e => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key === 'k')     { e.preventDefault(); clearAll(); }
+  if (mod && e.key === 'Enter') { e.preventDefault(); doCopy(); }
+});
+
+/* ── Drag & drop onto input ──────────────────────── */
+const inp = document.getElementById('input');
+inp.addEventListener('dragover',  e => { e.preventDefault(); inp.classList.add('drag-over'); });
+inp.addEventListener('dragleave', ()  => inp.classList.remove('drag-over'));
+inp.addEventListener('drop', e => {
+  e.preventDefault();
+  inp.classList.remove('drag-over');
+  const txt = e.dataTransfer.getData('text');
+  if (txt) { inp.value = txt; update(); }
+});
+
+/* ── Init ────────────────────────────────────────── */
+if (typeof marked !== 'undefined') {
+  marked.setOptions({ breaks: true, gfm: true });
+}
+onAppChange();
+document.getElementById('input').focus();
+</script>
+</body>
+</html>
