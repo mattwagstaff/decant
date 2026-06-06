@@ -4,7 +4,7 @@
 
 Decant is a browser-based formatting tool that takes AI-generated text, terminal output, or raw markdown and reformats it for seamless pasting into the app you're actually using — Word, Notion, Slack, email, and more.
 
-No install, no dependencies, no build step. Open the HTML file and go.
+No install, no dependencies, no build step. **[Try it live →](https://mattwagstaff.github.io/decant)**
 
 ---
 
@@ -52,7 +52,7 @@ Decant bridges that gap.
 
 ### Online
 
-Visit the live app (if hosted) or open `index.html` in any modern browser.
+**[decant — mattwagstaff.github.io/decant](https://mattwagstaff.github.io/decant)**
 
 ### Local
 
